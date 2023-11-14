@@ -3,6 +3,7 @@
 Ackermann_pid_pursuit::Ackermann_pid_pursuit(ros::NodeHandle nh) : remote_(false), unlock_(false), safe_(false), max_deque_size_(3)
 {
     bool get_param = true;
+    PID pid;
     get_param &= nh.getParam("safety_mechanism/min_front_collision_distance", min_front_collision_distance_);
     get_param &= nh.getParam("safety_mechanism/min_back_collision_distance", min_back_collision_distance_);
     if (!get_param)
@@ -16,7 +17,7 @@ Ackermann_pid_pursuit::Ackermann_pid_pursuit(ros::NodeHandle nh) : remote_(false
 }
 /**
  * @brief sub path from topic.
-  */
+ */
 void Ackermann_pid_pursuit::pathCallback(const nav_msgs::Path::ConstPtr &path)
 {
     bool path_recived = false;
@@ -35,7 +36,6 @@ void Ackermann_pid_pursuit::pathCallback(const nav_msgs::Path::ConstPtr &path)
             // path_data_deque.push_front(path->poses(i));
         }
     }
-
 }
 
 void Ackermann_pid_pursuit::laserScanCallback(const sensor_msgs::LaserScan::ConstPtr &scan)
@@ -52,7 +52,6 @@ void Ackermann_pid_pursuit::laserScanCallback(const sensor_msgs::LaserScan::Cons
     }
 }
 
-
 void Ackermann_pid_pursuit::poseCallback(const geometry_msgs::PoseStamped::ConstPtr &pose)
 {
 }
@@ -60,13 +59,13 @@ void Ackermann_pid_pursuit::poseCallback(const geometry_msgs::PoseStamped::Const
 /**
  * @brief   执行调度
  * @todo    spinonce方式，使用空余时间执行调度
-  */
+ */
 void Ackermann_pid_pursuit::spin()
 {
     ros::spin();
 }
 
-    int main(int argc, char **argv)
+int main(int argc, char **argv)
 {
     ros::init(argc, argv, "ackermann_pid_pursuit");
     ros::NodeHandle nh;
