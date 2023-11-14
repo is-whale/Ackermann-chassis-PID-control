@@ -1,67 +1,90 @@
 #include <pid_lib.hpp>
 // #include <pid.h>//TODO：ROS lib PID, with time controal
 
-/**
- * @brief			calculate position pid,statice method,call in Pid_Position_Calc()
- * @param[in]		pid Pid_Position_t struct
- * @retval			none
- */
-// void PID::Calc_Position_Pid_Static(Pid_Position_t *pid)
+PID::PID() : nh_("~") {
 
- void PID::Calc_Position_Pid(Pid_Position_t *pid)
-{
-	float intergal_spare_k = 1.0f;
-
-	pid->err = pid->tar - pid->cur;
-	/* if use integral spare pid, default is not used */
-	if (pid->is_integral_spare)
-	{
-		if (fabs(pid->err) > pid->begin_integral)
-		{
-			intergal_spare_k = 0.0f;
-		}
-		else if (fabs(pid->err) < pid->stop_grow_integral)
-		{
-			pid->err_integral += pid->err;
-			intergal_spare_k = 1.0f;
-		}
-		else
-		{
-			pid->err_integral += pid->err;
-			intergal_spare_k = (pid->begin_integral - fabs(pid->err)) / (pid->begin_integral - pid->stop_grow_integral);
-		}
-	}
-	else
-	{
-		pid->err_integral += pid->err;
-	}
-
-	/* integral limit */
-	pid->err_integral = Pid_Limit(pid->err_integral, -pid->max_err_integral, pid->max_err_integral);
-
-	pid->p_out = pid->kp * pid->err;
-	pid->i_out = pid->ki * pid->err_integral * intergal_spare_k;
-	pid->d_out = pid->kd * (pid->err - pid->old_err);
-
-	pid->output = pid->p_out + pid->i_out + pid->d_out;
-
-	/* output limit */
-	pid->output = Pid_Limit(pid->output, -pid->max_out, pid->max_out);
-
-	pid->old_err = pid->err;
+  pub_pid_target_current_ =
+      nh_.advertise<geometry_msgs::Vector3>("pid_target_current", 10);
 }
 
 /**
- * @brief			calculate position pid
- * @param[in]		pid: Pid_Position_t struct, save pid param
- * @param[in]		tar: target value
- * @param[in]		cur: current value
- * @retval			pid->out: pid calculate result
- */
-float PID::Pid_Position_Calc(float tar, float cur)
-{
-	pid->tar = tar;
-	pid->cur = cur;
-	Calc_Position_Pid(pid);
-	return pid->output;
+ * @brief 计算速度PID输出值
+ * @param [target] 目标值
+ * @param [current] 上次的值，此处即为上次输出的电流值 
+ * @param [pid] 类型
+ * @param [debug] 日志系统的输出等级，用于pid计算函数内部的日志系统输出
+ * 
+  */
+float PID::operator()(const float target, const float current,
+                          const PidParams::PidType PID_TYPE,
+                          std::shared_ptr<PidParams> pid, bool debug) const {
+  switch (PID_TYPE) {
+    case PidParams::PidType::INCREMENTAL: {
+      // to be add
+      break;
+    }
+    case PidParams::PidType::POSITION: {
+      return CalculatePositionSpeedPid(target, current, pid, debug);
+    }
+    default:
+      break;
+  }
+}
+
+float PidLimit(float value, float min, float max) {
+  if (value < min) return min;
+  if (value > max) return max;
+  return value;
+}
+
+/**
+ * @brief 计算速度PID输出值
+ * @param [target] 目标值
+ * @param [current] 上次的值，此处即为上次输出的电流值 
+ * @param [pid] 文件读取到的pid参数
+ * @param [debug] 日志系统的输出等级，用于pid计算函数内部的日志系统输出
+ * 
+  */
+const float PID::CalculatePositionSpeedPid(float target, float current,
+                                               std::shared_ptr<PidParams> pid,
+                                               bool debug) const {
+  pid->current_ = current;
+  pid->target_ = target;
+  pid->error_ = pid->target_ - pid->current_;
+  pid->error_integral_ += pid->error_;
+
+  if (pid->use_intgral_limit_)
+    pid->error_integral_ = PidLimit(pid->error_integral_, -pid->integral_limit_,
+                                    pid->integral_limit_);
+
+  double p_out = pid->kp_ * pid->error_;
+  double i_out = pid->ki_ * pid->error_integral_;
+  double d_out = pid->kd_ * (pid->error_ - pid->last_error_);
+
+  pid->output_ = p_out + i_out + d_out;
+  pid->last_error_ = pid->error_;
+
+  if (pid->use_output_limit_)
+    pid->output_ =
+        PidLimit(pid->output_, -pid->output_limit_, pid->output_limit_);
+
+//   LOG_IF(WARNING, debug) << std::setprecision(4)
+//                          << std::setiosflags(std::ios::fixed)
+//                          << setiosflags(std::ios::showpos) << "Pid.Kp: "
+//                          << pid->kp_ /* << "\tPid.Ki: " << pid->ki_
+//            << "\tPid.Kd: "  << pid->kd_
+//            << "\tPid.Use.Output.Limit: " << pid->use_output_limit_
+//            << "\tPid.error: " << pid->error_
+//            << "\tPid.Integral: " << pid->error_integral_ */
+//                          << "\tPid.Name: " << pid->pid_name_
+//                          << "\tPid.Output: " << pid->output_
+//                          << "\tPid.Current: " << pid->current_
+//                          << "\tPid.Target: " << pid->target_;
+  if (debug) {
+    geometry_msgs::Vector3 pid_debug;
+    pid_debug.x = target;
+    pid_debug.y = current;
+    pub_pid_target_current_.publish(pid_debug);
+  }
+  return pid->output_;
 }
