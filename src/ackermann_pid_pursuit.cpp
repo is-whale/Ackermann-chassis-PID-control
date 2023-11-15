@@ -1,5 +1,7 @@
 #include <ackermann_pid_pursuit.hpp>
 
+Judging_Direction path_recive_and_direction;
+
 Ackermann_pid_pursuit::Ackermann_pid_pursuit(ros::NodeHandle nh) : remote_(false), unlock_(false), safe_(false), max_deque_size_(3)
 {
     bool get_param = true;
@@ -8,9 +10,10 @@ Ackermann_pid_pursuit::Ackermann_pid_pursuit(ros::NodeHandle nh) : remote_(false
     get_param &= nh.getParam("safety_mechanism/min_back_collision_distance", min_back_collision_distance_);
     if (!get_param)
     {
-        ROS_ERROR("Failed to get param");
-        return;
+        // ROS_ERROR("Failed to get param");
+        // return;
     }
+
     path_sub_ = nh.subscribe<nav_msgs::Path>("/path", 10, &Ackermann_pid_pursuit::pathCallback, this);
     geometry_sub_ = nh.subscribe<geometry_msgs::PoseStamped>("/current_pose", 1, &Ackermann_pid_pursuit::poseCallback, this);
     cmd_vel_pub_ = nh.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
@@ -65,11 +68,22 @@ void Ackermann_pid_pursuit::spin()
     ros::spin();
 }
 
+void path_Callback(const nav_msgs::Path &msg)
+{
+    ROS_INFO("received the path,ready to judge.");
+    path_recive_and_direction.pathCallback(msg);
+}
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "ackermann_pid_pursuit");
     ros::NodeHandle nh;
     Ackermann_pid_pursuit ackermann_pid_pursuit(nh);
+
+    // Judging_Direction path_recive_and_direction;
+
+    // ros::Subscriber splinePath = nh.subscribe("/move_base/TebLocalPlannerROS/local_plan", 20, path_Callback);
+    ros::Subscriber splinePath = nh.subscribe("/test_path", 20, path_Callback);
+
     ackermann_pid_pursuit.spin();
     return 0;
 }
