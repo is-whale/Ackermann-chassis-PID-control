@@ -1,6 +1,7 @@
 #include <judging_direction.hpp>
 
 #include <iostream> //for file
+
 #include <std_msgs/Int32.h>
 
 #include <glog/logging.h>
@@ -24,7 +25,22 @@ static float back_deviation = 0.0f;  ///< 偏右为正
 static float steer_deviation_out = 0.0f;
 static float back_motors_deviation_output = 0.0f;
 
+/**
+ * @brief 四元数2欧拉角
+ */
+std::array<float, 3> calQuaternionToEuler(const float x, const float y,
+                                          const float z, const float w)
+{
+    std::array<float, 3> calRPY = {(0, 0, 0)};
+    // roll = atan2(2(wx+yz),1-2(x*x+y*y))
+    calRPY[0] = atan2(2 * (w * x + y * z), 1 - 2 * (x * x + y * y));
+    // pitch = arcsin(2(wy-zx))
+    calRPY[1] = asin(2 * (w * y - z * x));
+    // yaw = atan2(2(wx+yz),1-2(y*y+z*z))
+    calRPY[2] = atan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z));
 
+    return calRPY;
+}
 
 ///< 前轮、后轮偏移Pid
 // static Pid_Position_t front_motors_deviation_pid = NEW_POSITION_PID(2990, 0, 0, 10, 10000, 0, 1000, 500);
@@ -76,24 +92,25 @@ void Judging_Direction::pathCallback(const nav_msgs::Path &msg)
     // std::vector<nav_msgs::Path> paths;
     // std_msgs::Int32 sign ;
     // sign.data = 1;
-    if(!msg.poses.empty())
+    if (!msg.poses.empty())
     {
         curr_path = msg;
     }
-    else {
-        ROS_WARN("No path received.");
+    else
+    {
+        ROS_WARN("path is empty!");
     }
 
     // ROS_INFO("path received.");
-    for(int i = 0; i < curr_path.poses.size(); i++){
+    for (int i = 0; i < curr_path.poses.size(); i++)
+    {
         tar_pose = curr_path.poses[i].pose;
-        //TODO: use glog debug log.
-        ROS_INFO("x1: %f, y1: %f", curr_path.poses[i].pose.position.x,curr_path.poses[i].pose.position.y);
-        ROS_INFO("x2: %f, y2: %f", tar_pose.position.x, tar_pose.position.y);
+        // TODO: use glog debug log.
+        //  ROS_INFO("x1: %f, y1: %f", curr_path.poses[i].pose.position.x,curr_path.poses[i].pose.position.y);
+        //  ROS_INFO("x2: %f, y2: %f", tar_pose.position.x, tar_pose.position.y);
     }
-
 }
 
-    // Judging_Direction judge;
-    // ros::Subscriber splinePath = nh.subscribe("/move_base/TebLocalPlannerROS/local_plan", 20, pathCallback);
-// 
+// Judging_Direction judge;
+// ros::Subscriber splinePath = nh.subscribe("/move_base/TebLocalPlannerROS/local_plan", 20, pathCallback);
+//

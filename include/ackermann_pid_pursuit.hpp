@@ -16,7 +16,6 @@
 
 #include <judging_direction.hpp>
 
-
 class Ackermann_pid_pursuit
 {
 public:
