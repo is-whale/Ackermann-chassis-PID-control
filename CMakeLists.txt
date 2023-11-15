@@ -18,7 +18,17 @@ include_directories(${CMAKE_INSTALL_PREFIX}/include
   ${catkin_INCLUDE_DIRS}
   include
 )
-add_executable(${PROJECT_NAME} src/ackermann_pid_pursuit.cpp src/judge_direction.cpp src/pid_lib.cpp) # Removed the duplicate call to add_executable() here.
-target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} glog) # Moved this line here after adding the missing target linking library.
-install(TARGETS ${PROJECT_NAME} DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}) # Removed the duplicate install() call here. Installation should be done only once for all targets. Also moved this line here.
+
+add_executable(${PROJECT_NAME} 
+src/ackermann_pid_pursuit.cpp 
+src/judge_direction.cpp 
+src/pid_lib.cpp
+) # Removed the duplicate call to add_executable() here.
+target_link_libraries(${PROJECT_NAME} 
+${catkin_LIBRARIES}
+ glog
+ ) # Moved this line here after adding the missing target linking library.
+install(TARGETS ${PROJECT_NAME} 
+DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
+ # Removed the duplicate install() call here. Installation should be done only once for all targets. Also moved this line here.
 install(DIRECTORY include/${PROJECT_NAME}/ DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION} FILES_MATCHING PATTERN "*.hpp") # Removed the duplicate install() call here. Installation should be done only once for all targets. Also moved this line here.
