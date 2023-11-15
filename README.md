@@ -14,37 +14,28 @@
 
 ## About <a name = "about"></a>
 
-Write about 1-2 paragraphs describing the purpose of your project.
 
+## TODO
+
+- receive path and sive in txt. because the path only pub once.
+- dev
+- pid
+- 纵向控制 两种情况
+### 1.当检测的路径曲率在容忍值之内时
+- 1.速度+时间   可以使用时间+速度，进行单层PID计算；
+- 2. 位移      可以直接使用筛选后的位移场地，进行双层串级PID控制
+### 2.当检测的路径曲率不在容忍值之内时（短路径）
+使用短期循迹的方式
+
+###
 ## Getting Started <a name = "getting_started"></a>
 
 The package is wright for puresuit. Using location and
 ### Prerequisites
 
-What things you need to install the software and how to install them.
-
-```
-Give examples
-```
 
 ### Installing
 
-A step by step series of examples that tell you how to get a development env running.
-
-Say what the step will be
-
-```
-Give the example
-```
-
-And repeat
-
-```
-until finished
-```
-
-End with an example of getting some data out of the system or using it for a little demo.
 
 ## Usage <a name = "usage"></a>
 
-Add notes about how to use the system.
