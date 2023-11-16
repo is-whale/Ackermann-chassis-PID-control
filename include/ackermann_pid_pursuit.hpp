@@ -15,6 +15,7 @@
 #include <ros/ros.h>
 
 #include <judging_direction.hpp>
+void pointCallback(const nav_msgs::Path &msg);
 
 class Ackermann_pid_pursuit
 {
@@ -61,6 +62,7 @@ private:
     int max_deque_size_;
     std::deque<bool> safe_deque_;
     std::deque<geometry_msgs::Point> path_data_deque;//< 存储路径点
+    public:
     int path_data_size_;
     int path_data_index_;
 };
