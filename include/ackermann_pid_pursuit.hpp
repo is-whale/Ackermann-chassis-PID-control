@@ -15,7 +15,7 @@
 #include <ros/ros.h>
 
 #include <judging_direction.hpp>
-void pointCallback(const nav_msgs::Path &msg);
+// void pointCallback(const nav_msgs::Path &msg);
 
 class Ackermann_pid_pursuit
 {

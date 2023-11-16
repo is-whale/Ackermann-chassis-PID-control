@@ -155,12 +155,9 @@ void path_callback(const nav_msgs::Path &msg)
 {
     ROS_INFO("received the path,ready to judge.");
     path_recive_and_direction.pathCallback(msg);
-    pointCallback(msg);
-}
-void pointCallback(const nav_msgs::Path &msg)
-{
-    // geometry_msgs/PoseStamped[] poses
+    // pointCallback(msg);
     //    ROS_INFO("got a plan!");
+
     int pn = msg.poses.size();
     if (pn != pointNum)
     {
@@ -173,10 +170,11 @@ void pointCallback(const nav_msgs::Path &msg)
             r_y_.push_back(msg.poses[i].pose.position.y);
         }
         ROS_INFO("current path len: %d", pointNum);
-        // auto a = msg.poses[0].pose.position.x;
-
-        //  ROS_INFO("point %d:%f,%f",i,msg.poses[i].pose.position.x,msg.poses[i].pose.position.y);
     }
+
+    // auto a = msg.poses[0].pose.position.x;
+
+    //  ROS_INFO("point %d:%f,%f",i,msg.poses[i].pose.position.x,msg.poses[i].pose.position.y);
     else if (!msg.poses.empty() && !r_x_.empty())
     {
         if (r_x_[0] != msg.poses[0].pose.position.x)
@@ -208,7 +206,6 @@ void pointCallback(const nav_msgs::Path &msg)
     //  {
     //  path_tmp = path_recive_and_direction.getSubPath();
     // }
-
 }
 
 /**
@@ -239,7 +236,6 @@ int main(int argc, char **argv)
 
         // std::cout << "path_size " << ackermann_pid_pursuit.path_data_size_ << std::endl;
         std::cout << "path_size " << pointNum << std::endl;
-
 
         // std::cout << "path_size " << path_tmp->poses.size() << std::endl;
         //  for (int i = 0; i < path_tmp->poses.size(); i++)
