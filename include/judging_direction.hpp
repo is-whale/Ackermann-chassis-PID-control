@@ -1,7 +1,8 @@
 #ifndef JUDGING_DIRECTION_H
 #define JUDGING_DIRECTION_H
 #include <pid_lib.hpp>
-
+std::array<float, 3> calQuaternionToEuler(const float x, const float y,
+                                          const float z, const float w);
 
 #include <nav_msgs/Path.h>
 class Judging_Direction

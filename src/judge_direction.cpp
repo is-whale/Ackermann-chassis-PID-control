@@ -41,6 +41,26 @@ std::array<float, 3> calQuaternionToEuler(const float x, const float y,
 
     return calRPY;
 }
+/**
+ * @brief direction_analysis in a waypoint.
+  */
+void poseCallback(const geometry_msgs::Pose &currentWaypoint)
+{
+  // 保存当前信息
+  auto currentPositionX = currentWaypoint.position.x;
+  auto currentPositionY = currentWaypoint.position.y;
+  auto currentPositionZ = 0.0;
+
+  auto currentQuaternionX = currentWaypoint.orientation.x;
+  auto currentQuaternionY = currentWaypoint.orientation.y;
+  auto currentQuaternionZ = currentWaypoint.orientation.z;
+  auto currentQuaternionW = currentWaypoint.orientation.w;
+
+  // 四元数转换
+  std::array<float, 3> calRPY =
+      calQuaternionToEuler(currentQuaternionX, currentQuaternionY,
+                           currentQuaternionZ, currentQuaternionW);
+}
 
 ///< 前轮、后轮偏移Pid
 // static Pid_Position_t front_motors_deviation_pid = NEW_POSITION_PID(2990, 0, 0, 10, 10000, 0, 1000, 500);
