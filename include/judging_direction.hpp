@@ -11,7 +11,7 @@ private:
     float angle_vel_pid_out_{0.0f};
     float angle_pid_out_{0.0f};
     float speed_pid_out_{0.0f};
-    
+
 public:
     nav_msgs::Path curr_path;
     geometry_msgs::Pose start_pose;
@@ -29,7 +29,14 @@ public:
     // void pathCallback(const nav_msgs::PathConstPtr &msg);
     const nav_msgs::Path *getSubPath() const
     {
-        return &curr_path;
+        if (!curr_path.poses.empty())
+        {
+            return &curr_path;
+        }
+        else
+        {
+            return nullptr;
+        }
     }
     std::shared_ptr<PID> car_pid_ptr_;
 // const uint8_t LINE_VALUE_ = 0; ///< 方向判断
