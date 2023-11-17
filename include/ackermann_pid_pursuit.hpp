@@ -13,9 +13,13 @@
 #include <std_msgs/String.h>
 #include <std_msgs/Empty.h>
 #include <ros/ros.h>
+#include <nav_msgs/Odometry.h>
 
 #include <judging_direction.hpp>
 // void pointCallback(const nav_msgs::Path &msg);
+void path_callback(const nav_msgs::Path &msg);
+void odomCallback(const nav_msgs::Odometry &odominfo);
+void pointCallback(const nav_msgs::Path &msg);
 
 class Ackermann_pid_pursuit
 {
@@ -29,7 +33,7 @@ private:
     ros::Publisher cmd_vel_pub_;
     ros::Publisher vehice_cmd_pub_;
 
-    ros::Publisher pid_message_pub_;//>波形展示
+    ros::Publisher pid_message_pub_; //>波形展示
     ros::Subscriber remote_sub_;
     ros::Subscriber unlock_sub_;
     double min_front_collision_distance_;
@@ -38,13 +42,12 @@ private:
     double min_right_collision_distance_;
     double max_velocity_;
 
-    //callback
+    // callback
     void pathCallback(const nav_msgs::Path::ConstPtr &path);
     void poseCallback(const geometry_msgs::PoseStamped::ConstPtr &pose);
 
     void laserScanCallback(const sensor_msgs::LaserScan::ConstPtr &scan);
     void cmdVelCallback(const geometry_msgs::Twist::ConstPtr &cmd_vel);
-
 
     bool checkLaserDistance();
     bool checkVelocity();
@@ -61,8 +64,9 @@ private:
     bool unlock_; // true,允许低速模式
     int max_deque_size_;
     std::deque<bool> safe_deque_;
-    std::deque<geometry_msgs::Point> path_data_deque;//< 存储路径点
-    public:
+    std::deque<geometry_msgs::Point> path_data_deque; //< 存储路径点
+
+public:
     int path_data_size_;
     int path_data_index_;
 };

@@ -1,0 +1,12 @@
+%YAML:1.0
+---
+Pid.Name: bike_speed_pid
+Kp: -0.0015
+Ki: 0.000
+Kd: 0.0000
+CalculateTime: 450
+Debug: 0
+Integal.Limit: 2.0
+Use.Integal.Limit: true
+Output.Limit: 6.0
+Use.Output.Limit: true
