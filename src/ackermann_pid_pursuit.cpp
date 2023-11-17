@@ -10,6 +10,8 @@
 #include <ros/ros.h>
 #include "tf2_geometry_msgs/tf2_geometry_msgs.h"
 
+#include <pid_lib.hpp>
+
 // topic
 Judging_Direction path_recive_and_direction;
 ros::Publisher posepub_;
@@ -24,13 +26,90 @@ geometry_msgs::TwistStamped currtwist;
 geometry_msgs::PoseStamped newpose;
 geometry_msgs::TwistStamped newtwist;
 
+void pid_calc_and_pub();
+geometry_msgs::Twist pub_vel;
+
 // waypoints
 std::vector<float> r_x_;
 std::vector<float> r_y_;
 
+<<<<<<< HEAD
 u_int64_t pointNum = 0; // 保存路径点的个数
 int targetIndex = pointNum - 1;
 
+=======
+namespace cpprobotics
+{
+
+    using Poi_f = std::array<float, 4>;
+    using Vec_Poi = std::vector<Poi_f>;
+
+};
+
+// cpprobotics::Vec_Poi waypoint_orientation;
+
+std::vector<double> waypoint_orientationx;
+std::vector<double> waypoint_orientationy;
+std::vector<double> waypoint_orientationz;
+std::vector<double> waypoint_orientationw;
+
+// pid用的第一个路径角度
+std::array<float, 3> angle_for_pid;
+std::array<float, 3> angle_from_odom;
+int pointNum = 0; // 保存路径点的个数
+int targetIndex = pointNum - 1;
+
+ros::Publisher  cmd_vel_pub_;
+
+ros::Time last_time; // 用于延时
+
+struct PID_param_c
+{
+ double kp;
+ double ki;
+ double kd;
+ double last_error;
+ double error;
+ double integral;
+ double derivative;
+ double output_limit;
+ bool use_integral_limit;
+ bool use_output_limit;
+ // 构造函数
+ PID_param_c(double kp, double ki, double kd, double output_limit)
+ : kp(kp),
+   ki(ki),
+   kd(kd),
+   last_error(0.0),
+   error(0.0),
+   integral(0.0),
+   derivative(0.0),
+   output_limit(output_limit),
+   use_integral_limit(false),
+   use_output_limit(true)
+ {
+ }
+};
+// 定义PID参数结构体指针
+PID_param_c* pid_vel = new PID_param_c(1.0, 0.1, 0.01, 1.0);
+/**
+ * @brief PID计算函数，输入参数为目标值，实际值，PID参数结构体，返回类型是解算完成的值
+ *   */ 
+double PID_calculate(double target, double actual, PID_param_c &pid)
+{
+double error = target - actual;
+  pid.error = error;
+  pid.integral += error;
+  pid.derivative = pid.error - pid.last_error;
+  pid.last_error = error;
+  double output = pid.kp * pid.error + pid.ki * pid.integral + pid.kd * pid.derivative;
+  if (output > pid.output_limit) output = pid.output_limit;
+  if (output < pid.output_limit) output = pid.output_limit;
+  double actual_output = pid.output_limit + output - pid.output_limit;
+  return actual_output;
+}
+
+>>>>>>> 5f9b1a0 (ok)
 Ackermann_pid_pursuit::Ackermann_pid_pursuit(ros::NodeHandle nh) : remote_(false), unlock_(false), safe_(false), max_deque_size_(3)
 {
     bool get_param = true;
@@ -88,14 +167,14 @@ void odomCallback(const nav_msgs::Odometry &odominfo)
     std::array<float, 3> calRPY =
         calQuaternionToEuler(currentQuaternionX, currentQuaternionY,
                              currentQuaternionZ, currentQuaternionW);
-    // std::cout << "cat_yaw: " << calRPY[0] << " car_pitch: " << calRPY[1] << " car_roll: " << calRPY[2] << std::endl;
+    angle_from_odom =
+        calQuaternionToEuler(currentQuaternionX, currentQuaternionY,
+                             currentQuaternionZ, currentQuaternionW);
+    std::cout << "car_yaw: " << angle_from_odom[0] << " car_pitch: " << angle_from_odom[1] << " car_roll: " << angle_from_odom[2] << std::endl;
+    pid_calc_and_pub();
+    cmd_vel_pub_.publish(pub_vel);
 
-    // newtwist = buf.transform(currtwist,"map");
-    //   poseCallback(newpose.pose);
-    // velocityCall(newtwist.twist);
-    // poseCallback(curr_pose);
-    //   velocityCall(curr_vel);
-    // ROS_INFO("getting one odom info!");
+    // std::cout << "pos1: " << curr_pose.position.x << " pos1: " << curr_pose.position.y << " pos1: " << curr_pose.position.z << std::endl;
 }
 
 /**
@@ -213,11 +292,10 @@ void path_callback(const nav_msgs::Path &msg)
  */
 /*void odom_callback(const nav_msgs::Odometry &msg)
 {
-    ROS_INFO("received the odom message,ready to process.");
-    path_recive_and_direction.odomCallback(msg);
-}*/
-// ROS_INFO("received the odom message,ready to process.");
-
+    
+    pub_vel.angular.z = PID_calculate(angle_for_pid[2] , angle_for_pid[2], *pid_vel);
+    pub_vel.linear.x = 1;
+}
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "ackermann_pid_pursuit");
@@ -228,6 +306,11 @@ int main(int argc, char **argv)
     // 暂时使用全局
     ros::Subscriber splinePath = nh.subscribe("/move_base/TebLocalPlannerROS/local_plan", 20, path_callback);
     ros::Subscriber odomMsgs = nh.subscribe("/odom", 20, odomCallback);
+    cmd_vel_pub_ = nh.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
+
+    // fix
+    //  ros::Subscriber odom_sub = nh.subscribe<geometry_msgs::PoseStamped>("/odom", 1, odomCallback);
+
     while (ros::ok())
     {
         float min_distance = 1.0;
@@ -261,19 +344,6 @@ int main(int argc, char **argv)
         // currpose.header = path_tmp->header;
         // currpose.header.frame_id = "odom";
     }
-    // ros::Subscriber odom_sub = nh.subscribe<geometry_msgs::PoseStamped>("/odom", 1, odomCallback);
-    //   ros::Subscriber odomMsgs = nh.subscribe("/odom", 20, odom_Callback);
-    // if (!path_recive_and_direction.getSubPath())
-    // {
-    //     path_tmp = path_recive_and_direction.getSubPath();
-    // }
-    /*
-    for (int i = 0; i < path_tmp->poses.size(); i++)
-    {
-        // ROS_INFO("%f",path_tmp->poses. )
-         std::cout << "x: %f y: %f" << path_tmp->poses[i].pose.position.x << path_tmp->poses[i].pose.position.y << std::endl; //有内存错误，好像是数据格式的问题，输出是非常大的值
-    } */
-    // direction = [2*(qw*qx + qy*qz), 2*(qw*qy - qx*qz), 1 - 2*(qx^2 + qy^2)] //四元数解算
     ackermann_pid_pursuit.spin();
     return 0;
 }
