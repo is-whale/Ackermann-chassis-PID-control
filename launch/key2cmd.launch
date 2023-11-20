@@ -1,5 +1,5 @@
 <launch>
-    <arg name="repeat_rate" value="50.0"/>
+    <arg name="repeat_rate" value="30.0"/>
         <node name="teleop_keybord" pkg="teleop_twist_keyboard" type="teleop_twist_keyboard.py" output="screen">
         <param name="repeat_rate" value="$(arg repeat_rate)"/>
         <!-- <remap from="/cmd_vel" to="/yocs_cmd_vel_mux/input/key_vel"/> -->

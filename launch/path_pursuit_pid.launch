@@ -1,0 +1,5 @@
+<launch>
+    <node name="ackermann_pid_pursuit" type="ackermann_pid_pursuit" pkg="ackermann_pid_pursuit" output="screen" >
+		<rosparam file="$(find ackermann_pid_pursuit)/cfg/angle_pid.yaml" command="load" ns="angle_pid" />
+    </node>
+</launch>

@@ -3,13 +3,14 @@
 #include <cmath>
 
 #include <ros/ros.h>
+#include <ros/param.h>
 #include <tf/tf.h>
 #include "tf2_ros/transform_listener.h"
 #include "tf2_geometry_msgs/tf2_geometry_msgs.h"
 #include <nav_msgs/Odometry.h>
 #include "geometry_msgs/PoseStamped.h"
 #include <tf/transform_datatypes.h>
-
+#include <dynamic_reconfigure/server.h>
 #include <pid_lib.hpp>
 
 // topic
@@ -58,6 +59,8 @@ ros::Publisher cmd_vel_pub_;
 
 ros::Time last_time; // 用于延时
 
+uint8_t track_pid_count = 0;
+
 struct PID_param_c
 {
     double kp;
@@ -86,7 +89,7 @@ struct PID_param_c
     }
 };
 // 定义PID参数结构体指针
-PID_param_c *pid_vel = new PID_param_c(0.8, 0.0, 0.0, 1.0);
+PID_param_c *pid_vel = new PID_param_c(4, 0.0, 0.0, 1.0);
 /**
  * @brief PID计算函数，输入参数为目标值，实际值，PID参数结构体，返回类型是解算完成的值
  *   */
@@ -143,23 +146,24 @@ void odomCallback(const nav_msgs::Odometry &odominfo)
     auto currentQuaternionZ = curr_pose.orientation.z;
     auto currentQuaternionW = curr_pose.orientation.w;
 
-    std::array<float, 3> calRPY =
-        calQuaternionToEuler(currentQuaternionX, currentQuaternionY,
-                             currentQuaternionZ, currentQuaternionW);
     angle_from_odom =
         calQuaternionToEuler(currentQuaternionX, currentQuaternionY,
                              currentQuaternionZ, currentQuaternionW);
 
-    std::cout << "car_roll: " << angle_from_odom[0] << " car_pitch: " << angle_from_odom[1] << " car_yaw: " << angle_from_odom[2] << std::endl;
-    pub_vel.angular.z = PID_calculate(angle_from_path[2], angle_from_odom[2], *pid_vel);
-    pub_vel.linear.x = 0.5;
-    cmd_vel_pub_.publish(pub_vel);
+    // std::cout << "car_roll: " << angle_from_odom[0] << " car_pitch: " << angle_from_odom[1] << " car_yaw: " << angle_from_odom[2] << std::endl;
 
-//TODO:cmd 发布频率有点快,需要移动到其他位置或者使用定时器回调
+    // 控制频率
+        pub_vel.angular.z = PID_calculate(angle_from_path[2], angle_from_odom[2], *pid_vel);
+        pub_vel.linear.x = 0.3;
+        cmd_vel_pub_.publish(pub_vel);
+    // TODO:cmd 发布频率调整,需要移动到其他位置或者使用定时器回调
+
+    /// log start
     // std::cout << "pos1: " << curr_pose.position.x << " pos1: " << curr_pose.position.y << " pos1: " << curr_pose.position.z << std::endl;
 
     // check origin data.
     //  std::cout << "tar : " << angle_for_pid[2] << " pos1: " << angle_from_odom [2] << std::endl;
+    /// log end
 }
 
 /**
@@ -177,11 +181,6 @@ void Ackermann_pid_pursuit::pathCallback(const nav_msgs::Path::ConstPtr &path)
         path_data = *path;
         // TODO：将队列操作移植出来，不使用函数调用。use sign,runtime
         path_data_size_ = path->poses.size();
-        // for (int i = 0; i < path->poses.size(); i++)
-        // {
-        // path_data_deque.push_back(path_data.poses.data[i]);
-        // path_data_deque.push_front(path->poses(i));
-        // }
     }
 }
 
@@ -255,13 +254,10 @@ void path_callback(const nav_msgs::Path &msg)
     auto currentQuaternionZ = msg.poses.data()->pose.orientation.z;
     auto currentQuaternionW = msg.poses.data()->pose.orientation.w;
 
-    // std::array<float, 3> calRPY =
-    //     calQuaternionToEuler(currentQuaternionX, currentQuaternionY,
-    //                          currentQuaternionZ, currentQuaternionW);
     angle_from_path = calQuaternionToEuler(currentQuaternionX, currentQuaternionY,
                                            currentQuaternionZ, currentQuaternionW);
 
-    std::cout << "path_roll: " << angle_from_path[0] << " path_pitch: " << angle_from_path[1] << " path_yaw: " << angle_from_path[2] << std::endl;
+    // std::cout << "path_roll: " << angle_from_path[0] << " path_pitch: " << angle_from_path[1] << " path_yaw: " << angle_from_path[2] << std::endl;
 }
 
 int main(int argc, char **argv)
@@ -269,6 +265,10 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "ackermann_pid_pursuit");
     ros::NodeHandle nh;
     Ackermann_pid_pursuit ackermann_pid_pursuit(nh);
+
+    int param_int;
+    ros::param::get("angle_i",param_int);
+    std::cout << param_int <<std::endl;
 
     // 暂时使用全局
     ros::Subscriber splinePath = nh.subscribe("/move_base/TebLocalPlannerROS/local_plan", 20, path_callback);
