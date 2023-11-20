@@ -4,16 +4,22 @@ project(ackermann_pid_pursuit)
 add_compile_options(-std=c++17)
 find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
+  dynamic_reconfigure
   nav_msgs
   roscpp
   rospy
   tf2
   tf2_ros
 )
+
+generate_dynamic_reconfigure_options(
+  cfg/angle_pid.cfg
+)
+
 catkin_package(
  INCLUDE_DIRS include
  LIBRARIES ackermann_pid_pursuit
- CATKIN_DEPENDS geometry_msgs nav_msgs roscpp rospy sensor_msgs
+ CATKIN_DEPENDS geometry_msgs nav_msgs roscpp rospy sensor_msgs dynamic_reconfigure
 )
 include_directories(${CMAKE_INSTALL_PREFIX}/include
   ${catkin_INCLUDE_DIRS}
@@ -25,6 +31,9 @@ src/ackermann_pid_pursuit.cpp
 src/judge_direction.cpp 
 src/pid_lib.cpp
 ) # Removed the duplicate call to add_executable() here.
+
+add_dependencies(ackermann_pid_pursuit ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} ${PROJECT_NAME}_gencfg)
+
 target_link_libraries(${PROJECT_NAME} 
 ${catkin_LIBRARIES}
  glog

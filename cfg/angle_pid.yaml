@@ -1,0 +1,6 @@
+
+#---standard pioneer footprint---
+#---(in meters)---
+ angle_p: 0.8
+ angle_i: 0.0
+ angle_d: 0.0
