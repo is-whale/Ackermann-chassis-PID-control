@@ -30,6 +30,7 @@ add_executable(${PROJECT_NAME}
 src/ackermann_pid_pursuit.cpp 
 src/judge_direction.cpp 
 src/pid_lib.cpp
+src/utilities.cpp
 ) # Removed the duplicate call to add_executable() here.
 
 add_dependencies(ackermann_pid_pursuit ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} ${PROJECT_NAME}_gencfg)
