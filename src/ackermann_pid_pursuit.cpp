@@ -125,14 +125,11 @@ Ackermann_pid_pursuit::Ackermann_pid_pursuit(ros::NodeHandle nh) : remote_(false
     geometry_sub_ = nh.subscribe<geometry_msgs::PoseStamped>("/current_pose", 1, &Ackermann_pid_pursuit::poseCallback, this);
 }
 /**
- * @brief 接受定位消息并且进行TF转换 -> map
+ * @brief 接受odom信息并且转换到欧拉角
  */
 
 void odomCallback(const nav_msgs::Odometry &odominfo)
 {
-    static tf2_ros::Buffer buf;
-    static tf2_ros::TransformListener tl(buf);
-    // geometry_msgs::TransformStamped tfm = buf.lookupTransform("odom","map",ros::Time(0));
     curr_pose = odominfo.pose.pose;
     curr_vel = odominfo.twist.twist;
     // 直接赋值
@@ -183,7 +180,9 @@ void Ackermann_pid_pursuit::pathCallback(const nav_msgs::Path::ConstPtr &path)
         path_data_size_ = path->poses.size();
     }
 }
-
+/**
+ * @brief 接受scan数据，并且选出距离最进的点，索引以及最短距离
+  */
 void Ackermann_pid_pursuit::laserScanCallback(const sensor_msgs::LaserScan::ConstPtr &scan)
 {
     double min_distance = 1000;
@@ -266,9 +265,9 @@ int main(int argc, char **argv)
     ros::NodeHandle nh;
     Ackermann_pid_pursuit ackermann_pid_pursuit(nh);
 
-    int param_int;
-    ros::param::get("angle_i",param_int);
-    std::cout << param_int <<std::endl;
+    // int param_int;
+    // ros::param::get("angle_i",param_int);
+    // std::cout << param_int <<std::endl;
 
     // 暂时使用全局
     ros::Subscriber splinePath = nh.subscribe("/move_base/TebLocalPlannerROS/local_plan", 20, path_callback);
