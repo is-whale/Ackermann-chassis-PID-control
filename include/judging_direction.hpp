@@ -24,7 +24,6 @@ public:
     void Calc_Chassis_Motors_deviation();
 
     void pathCallback(const nav_msgs::Path &msg);
-    // std::shared_ptr<nav_msgs::Path> getSubPath() const {return curr_path};
 
     // void pathCallback(const nav_msgs::PathConstPtr &msg);
     const nav_msgs::Path *getSubPath() const
