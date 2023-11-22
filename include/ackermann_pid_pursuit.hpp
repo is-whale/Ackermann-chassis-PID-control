@@ -24,7 +24,9 @@ void pointCallback(const nav_msgs::Path &msg);
 class Ackermann_pid_pursuit
 {
 public:
-    Ackermann_pid_pursuit(ros::NodeHandle nh);
+    // Ackermann_pid_pursuit(ros::NodeHandle nh);
+    Ackermann_pid_pursuit() = default;
+    ~Ackermann_pid_pursuit() = default;
     void spin();
 
 private:
@@ -47,10 +49,8 @@ private:
     void poseCallback(const geometry_msgs::PoseStamped::ConstPtr &pose);
 
     void laserScanCallback(const sensor_msgs::LaserScan::ConstPtr &scan);
-    void cmdVelCallback(const geometry_msgs::Twist::ConstPtr &cmd_vel);
 
-    bool checkLaserDistance();
-    bool checkVelocity();
+    double yawError(const geometry_msgs::Quaternion &quat, unsigned int closest);
 
     double theta1_ = -M_PI + M_PI / 6; // 激光雷达到车辆右下角的角度   （-0.485,-1.25）
     double theta2_ = 0 - M_PI / 4;     // 激光雷达到车辆右上角的角度    (-0.485,0.78)
@@ -69,6 +69,7 @@ private:
 public:
     int path_data_size_;
     int path_data_index_;
+    void callbackOdom(const nav_msgs::Odometry &msg);
 };
 
 #endif

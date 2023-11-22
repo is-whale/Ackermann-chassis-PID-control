@@ -11,14 +11,35 @@
 #include "geometry_msgs/PoseStamped.h"
 #include <tf/transform_datatypes.h>
 #include <dynamic_reconfigure/server.h>
+#include <std_msgs/Float64.h>
+
 #include <pid_lib.hpp>
+#include <utilities.hpp>
+
+// #define AUDIBOT_STEERING_RATIO  17.3
+#define AUDIBOT_STEERING_RATIO 20
+// for debug
+#define CMAKE_CXX_FLAGS_DEBUG 1
+#ifdef CMAKE_CXX_FLAGS_DEBUG
+#define LOG_INFO(info) \
+    ROS_INFO_STREAM(info)
+#else
+#define LOG_INFO(info) ((void)0)
+#endif
+
+Ackermann_pid_pursuit ackermann_pid;
 
 // topic
 Judging_Direction path_recive_and_direction;
+const nav_msgs::Path *path_recive = path_recive_and_direction.getSubPath();
+
+
+// if(path_recive_and_direction.getSubPath() != nullptr)
+// {
+//     path_recive = path_recive_and_direction.getSubPath();
+// }
 ros::Publisher posepub_;
 ros::Subscriber odomsub_;
-// path
-const nav_msgs::Path *path_tmp;
 // pose
 geometry_msgs::Pose curr_pose;
 geometry_msgs::Twist curr_vel;
@@ -109,27 +130,29 @@ double PID_calculate(double target, double actual, PID_param_c &pid)
     return actual_output;
 }
 
-Ackermann_pid_pursuit::Ackermann_pid_pursuit(ros::NodeHandle nh) : remote_(false), unlock_(false), safe_(false), max_deque_size_(3)
-{
-    bool get_param = true;
-    PID pid;
-    get_param &= nh.getParam("safety_mechanism/min_front_collision_distance", min_front_collision_distance_);
-    get_param &= nh.getParam("safety_mechanism/min_back_collision_distance", min_back_collision_distance_);
-    if (!get_param)
-    {
-        // ROS_ERROR("Failed to get param");
-        // return;
-        // TODO:预留给参数获取
-    }
+// Ackermann_pid_pursuit::Ackermann_pid_pursuit(ros::NodeHandle nh) : remote_(false), unlock_(false), safe_(false), max_deque_size_(3)
+// {
+//     bool get_param = true;
+//     PID pid;
+//     get_param &= nh.getParam("safety_mechanism/min_front_collision_distance", min_front_collision_distance_);
+//     get_param &= nh.getParam("safety_mechanism/min_back_collision_distance", min_back_collision_distance_);
+//     if (!get_param)
+//     {
+//         // ROS_ERROR("Failed to get param");
+//         // return;
+//         // TODO:预留给参数获取
+//     }
 
-    geometry_sub_ = nh.subscribe<geometry_msgs::PoseStamped>("/current_pose", 1, &Ackermann_pid_pursuit::poseCallback, this);
-}
+//     geometry_sub_ = nh.subscribe<geometry_msgs::PoseStamped>("/current_pose", 1, &Ackermann_pid_pursuit::poseCallback, this);
+//     // ros::Subscriber odomMsgs = nh.subscribe<ge>("/odom", 20, &Ackermann_pid_pursuit.callbackOdom,this);
+// }
 /**
  * @brief 接受odom信息并且转换到欧拉角
  */
 
 void odomCallback(const nav_msgs::Odometry &odominfo)
 {
+    ackermann_pid.callbackOdom(odominfo);
     curr_pose = odominfo.pose.pose;
     curr_vel = odominfo.twist.twist;
     // 直接赋值
@@ -150,10 +173,12 @@ void odomCallback(const nav_msgs::Odometry &odominfo)
     // std::cout << "car_roll: " << angle_from_odom[0] << " car_pitch: " << angle_from_odom[1] << " car_yaw: " << angle_from_odom[2] << std::endl;
 
     // 控制频率
-        pub_vel.angular.z = PID_calculate(angle_from_path[2], angle_from_odom[2], *pid_vel);
-        pub_vel.linear.x = 0.3;
-        cmd_vel_pub_.publish(pub_vel);
-    // TODO:cmd 发布频率调整,需要移动到其他位置或者使用定时器回调
+    // pub_vel.angular.z = PID_calculate(angle_from_path[2], angle_from_odom[2], *pid_vel);
+    // pub_vel.linear.x = 0.3;
+    // cmd_vel_pub_.publish(pub_vel);
+
+    // 以上部分暂时注释
+    //  TODO:cmd 发布频率调整,需要移动到其他位置或者使用定时器回调
 
     /// log start
     // std::cout << "pos1: " << curr_pose.position.x << " pos1: " << curr_pose.position.y << " pos1: " << curr_pose.position.z << std::endl;
@@ -163,26 +188,72 @@ void odomCallback(const nav_msgs::Odometry &odominfo)
     /// log end
 }
 
+double Ackermann_pid_pursuit::yawError(const geometry_msgs::Quaternion &quat, unsigned int closest)
+{
+    double carYaw = utilities::getYaw(quat);
+    double pathYaw = utilities::getPathYaw(closest, path_recive->poses);
+    LOG_INFO("car: " << 180 / M_PI * carYaw << ", path: " << 180 / M_PI * pathYaw);
+    return utilities::validAngle(pathYaw - carYaw);
+}
+
+/**
+ * @brief Stanley方法的控制回调，使用原始路径信息
+ *
+ * void Ackermann_pid_pursuit::callbackOdom(const nav_msgs::Odometry::ConstPtr& msg){
+ */
+void Ackermann_pid_pursuit::callbackOdom(const nav_msgs::Odometry &msg)
+{
+    if(path_recive == nullptr)
+    {
+        return;
+    }
+    if (path_recive->poses.size() < 2)
+    {
+        return;
+    }
+    constexpr double Kp = -0.7;
+    unsigned int closest = utilities::closetPoint(msg.pose.pose.position, path_recive->poses);
+    if (closest >= path_recive->poses.size() - 1)
+    {
+        closest = path_recive->poses.size() - 2;
+    }
+    double headingError = yawError(msg.pose.pose.orientation, closest);
+    double cte = utilities::crossTrackError(msg.pose.pose.position,
+                                            path_recive->poses[closest].pose.position,
+                                            path_recive->poses[closest + 1].pose.position);
+    double vel = utilities::velocity(msg);
+    double steeringAngle = headingError + atan(Kp * cte / (1 + vel));
+    LOG_INFO("Steering angle: " << steeringAngle * 180 / M_PI << "[deg], closest: " << closest << ", cte: " << cte << ", vel: " << vel);
+    std::cout << "Steering angle: " << steeringAngle * 180 / M_PI << "[deg], closest: " << closest << ", cte: " << cte << ", vel: " << vel << std::endl;
+    // add for cmdvel
+    pub_vel.angular.z = AUDIBOT_STEERING_RATIO * steeringAngle;
+    if (path_recive->poses.size() > 2)
+    {
+        pub_vel.linear.x = 0.2;
+    }
+    else
+    {
+        pub_vel.linear.x = 0;
+    }
+
+    cmd_vel_pub_.publish(pub_vel);
+}
+
 /**
  * @brief sub path from topic.
  */
-void Ackermann_pid_pursuit::pathCallback(const nav_msgs::Path::ConstPtr &path)
-{
-    bool path_recived = false;
-    if (path->poses.size() > 0)
-    {
-        path_recived = true;
-    }
-    if (path_recived)
-    {
-        path_data = *path;
-        // TODO：将队列操作移植出来，不使用函数调用。use sign,runtime
-        path_data_size_ = path->poses.size();
-    }
-}
+// void Ackermann_pid_pursuit::pathCallback(const nav_msgs::Path::ConstPtr &path)
+// {
+//     if (path->poses.size() > 0)
+//     {
+//         path_data = *path;
+//         // TODO：将队列操作移植出来，不使用函数调用。use sign,runtime
+//         path_data_size_ = path->poses.size();
+//     }
+// }
 /**
  * @brief 接受scan数据，并且选出距离最进的点，索引以及最短距离
-  */
+ */
 void Ackermann_pid_pursuit::laserScanCallback(const sensor_msgs::LaserScan::ConstPtr &scan)
 {
     double min_distance = 1000;
@@ -211,7 +282,7 @@ void Ackermann_pid_pursuit::spin()
 }
 
 /**
- * @brief 路径处理
+ * @brief 路径回调函数——此回调提供反馈控制的信息
  */
 void path_callback(const nav_msgs::Path &msg)
 {
@@ -257,13 +328,14 @@ void path_callback(const nav_msgs::Path &msg)
                                            currentQuaternionZ, currentQuaternionW);
 
     // std::cout << "path_roll: " << angle_from_path[0] << " path_pitch: " << angle_from_path[1] << " path_yaw: " << angle_from_path[2] << std::endl;
+    std::cout << path_recive->poses.size() << std::endl;
 }
 
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "ackermann_pid_pursuit");
     ros::NodeHandle nh;
-    Ackermann_pid_pursuit ackermann_pid_pursuit(nh);
+    // Ackermann_pid_pursuit ackermann_pid;
 
     // int param_int;
     // ros::param::get("angle_i",param_int);
@@ -271,8 +343,10 @@ int main(int argc, char **argv)
 
     // 暂时使用全局
     ros::Subscriber splinePath = nh.subscribe("/move_base/TebLocalPlannerROS/local_plan", 20, path_callback);
-    ros::Subscriber odomMsgs = nh.subscribe("/odom", 20, odomCallback);
-    cmd_vel_pub_ = nh.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
+    ros::Subscriber odomMsgs = nh.subscribe("/odom", 20, odomCallback); // 测试stanky
+    // ros::Subscriber odomMsgs = nh.subscribe<nav_msgs::OdometryConstPtr>("/odom", 20, ackermann_pid.callbackOdom);
+
+    cmd_vel_pub_ = nh.advertise<geometry_msgs::Twist>("/cmd_vel", 5);
 
     while (ros::ok())
     {
@@ -281,6 +355,6 @@ int main(int argc, char **argv)
         int closest_index = 0;
         geometry_msgs::PoseStamped currpose;
     }
-    ackermann_pid_pursuit.spin();
+    ackermann_pid.spin();
     return 0;
 }
